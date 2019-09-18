@@ -163,16 +163,21 @@ mod tests {
         fn name(&self) -> &str;
     }
 
-    trait Feline: Animal {
+    trait Mammal: Animal {
+        fn legs(&self) -> &usize;
+    }
+
+    trait Feline: Mammal {
         fn eyes(&self) -> &usize;
     }
 
-    trait Canine: Animal {
+    trait Canine: Mammal {
         fn ears(&self) -> &usize;
     }
 
     struct Cat {
         name: String,
+        legs: usize,
         eyes: usize,
     }
 
@@ -183,6 +188,7 @@ mod tests {
         {
             Self {
                 name: name.into(),
+                legs: 4,
                 eyes: 2,
             }
         }
@@ -194,17 +200,25 @@ mod tests {
         }
     }
 
+    impl Mammal for Cat {
+        fn legs(&self) -> &usize {
+            &self.legs
+        }
+    }
+
     impl Feline for Cat {
         fn eyes(&self) -> &usize {
             &self.eyes
         }
     }
 
-    impl_cast_as!(struct Cat: Animal, Feline);
-    impl_cast_as!(trait Animal: Feline);
+    impl_cast_as!(struct Cat: Animal, Mammal, Feline);
+    impl_cast_as!(trait Animal: Mammal, Feline);
+    impl_cast_as!(trait Mammal: Feline);
 
     struct Dog {
         name: String,
+        legs: usize,
         ears: usize,
     }
 
@@ -215,6 +229,7 @@ mod tests {
         {
             Self {
                 name: name.into(),
+                legs: 4,
                 ears: 2,
             }
         }
@@ -226,29 +241,40 @@ mod tests {
         }
     }
 
+    impl Mammal for Dog {
+        fn legs(&self) -> &usize {
+            &self.legs
+        }
+    }
+
     impl Canine for Dog {
         fn ears(&self) -> &usize {
             &self.ears
         }
     }
 
-    impl_cast_from!(struct Dog: Animal, Canine);
+    impl_cast_from!(struct Dog: Animal, Mammal, Canine);
     impl_cast_from!(trait Animal: Canine);
+    impl_cast_from!(trait Mammal: Canine);
 
     #[test]
     fn test_cast_struct_as_trait_object() {
         let mut cat = Cat::new("Felix");
 
         assert!(cat.cast_ref::<dyn Animal>().is_some());
-        assert!(cat.cast_mut::<dyn Animal>().is_some());
+        assert!(cat.cast_ref::<dyn Mammal>().is_some());
         assert!(cat.cast_ref::<dyn Feline>().is_some());
+        assert!(cat.cast_mut::<dyn Animal>().is_some());
+        assert!(cat.cast_mut::<dyn Mammal>().is_some());
         assert!(cat.cast_mut::<dyn Feline>().is_some());
 
         let mut dog = Dog::new("Rover");
 
         assert!(dog.cast_ref::<dyn Animal>().is_some());
-        assert!(dog.cast_mut::<dyn Animal>().is_some());
+        assert!(dog.cast_ref::<dyn Mammal>().is_some());
         assert!(dog.cast_ref::<dyn Canine>().is_some());
+        assert!(dog.cast_mut::<dyn Animal>().is_some());
+        assert!(dog.cast_mut::<dyn Mammal>().is_some());
         assert!(dog.cast_mut::<dyn Canine>().is_some());
     }
 
@@ -261,12 +287,26 @@ mod tests {
         assert!(cat.cast_mut::<Cat>().is_some());
         assert!(cat.cast_mut::<Dog>().is_none());
 
+        let mut cat: Box<dyn Mammal> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<Cat>().is_some());
+        assert!(cat.cast_ref::<Dog>().is_none());
+        assert!(cat.cast_mut::<Cat>().is_some());
+        assert!(cat.cast_mut::<Dog>().is_none());
+
         let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
 
         assert!(cat.cast_ref::<Cat>().is_some());
         assert!(cat.cast_mut::<Cat>().is_some());
 
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<Cat>().is_none());
+        assert!(dog.cast_ref::<Dog>().is_some());
+        assert!(dog.cast_mut::<Cat>().is_none());
+        assert!(dog.cast_mut::<Dog>().is_some());
+
+        let mut dog: Box<dyn Mammal> = Box::new(Dog::new("Rover"));
 
         assert!(dog.cast_ref::<Cat>().is_none());
         assert!(dog.cast_ref::<Dog>().is_some());
@@ -289,6 +329,14 @@ mod tests {
         assert!(cast_mut::<Cat, _>(cat).is_some());
         assert!(cast_mut::<Dog, _>(cat).is_none());
 
+        let mut cat: Box<dyn Mammal> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Mammal = &mut *cat;
+
+        assert!(cast_ref::<Cat, _>(cat).is_some());
+        assert!(cast_ref::<Dog, _>(cat).is_none());
+        assert!(cast_mut::<Cat, _>(cat).is_some());
+        assert!(cast_mut::<Dog, _>(cat).is_none());
+
         let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
         let cat: &mut dyn Feline = &mut *cat;
 
@@ -297,6 +345,14 @@ mod tests {
 
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
         let dog: &mut dyn Animal = &mut *dog;
+
+        assert!(cast_ref::<Cat, _>(dog).is_none());
+        assert!(cast_ref::<Dog, _>(dog).is_some());
+        assert!(cast_mut::<Cat, _>(dog).is_none());
+        assert!(cast_mut::<Dog, _>(dog).is_some());
+
+        let mut dog: Box<dyn Mammal> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Mammal = &mut *dog;
 
         assert!(cast_ref::<Cat, _>(dog).is_none());
         assert!(cast_ref::<Dog, _>(dog).is_some());
@@ -314,17 +370,53 @@ mod tests {
     fn test_cast_trait_object_box_as_trait_object() {
         let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
 
+        assert!(cat.cast_ref::<dyn Mammal>().is_some());
         assert!(cat.cast_ref::<dyn Feline>().is_some());
         assert!(cat.cast_ref::<dyn Canine>().is_none());
+        assert!(cat.cast_mut::<dyn Mammal>().is_some());
         assert!(cat.cast_mut::<dyn Feline>().is_some());
         assert!(cat.cast_mut::<dyn Canine>().is_none());
 
+        let mut cat: Box<dyn Mammal> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<dyn Animal>().is_some());
+        assert!(cat.cast_ref::<dyn Feline>().is_some());
+        assert!(cat.cast_ref::<dyn Canine>().is_none());
+        assert!(cat.cast_mut::<dyn Animal>().is_some());
+        assert!(cat.cast_mut::<dyn Feline>().is_some());
+        assert!(cat.cast_mut::<dyn Canine>().is_none());
+
+        let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<dyn Animal>().is_some());
+        assert!(cat.cast_ref::<dyn Mammal>().is_some());
+        assert!(cat.cast_mut::<dyn Animal>().is_some());
+        assert!(cat.cast_mut::<dyn Mammal>().is_some());
+
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
 
+        assert!(dog.cast_ref::<dyn Mammal>().is_some());
         assert!(dog.cast_ref::<dyn Feline>().is_none());
         assert!(dog.cast_ref::<dyn Canine>().is_some());
+        assert!(dog.cast_mut::<dyn Mammal>().is_some());
         assert!(dog.cast_mut::<dyn Feline>().is_none());
         assert!(dog.cast_mut::<dyn Canine>().is_some());
+
+        let mut dog: Box<dyn Mammal> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<dyn Animal>().is_some());
+        assert!(dog.cast_ref::<dyn Feline>().is_none());
+        assert!(dog.cast_ref::<dyn Canine>().is_some());
+        assert!(dog.cast_mut::<dyn Animal>().is_some());
+        assert!(dog.cast_mut::<dyn Feline>().is_none());
+        assert!(dog.cast_mut::<dyn Canine>().is_some());
+
+        let mut dog: Box<dyn Canine> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<dyn Animal>().is_some());
+        assert!(dog.cast_ref::<dyn Mammal>().is_some());
+        assert!(dog.cast_mut::<dyn Animal>().is_some());
+        assert!(dog.cast_mut::<dyn Mammal>().is_some());
     }
 
     #[test]
@@ -332,17 +424,57 @@ mod tests {
         let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
         let cat: &mut dyn Animal = &mut *cat;
 
+        assert!(cast_ref::<dyn Mammal, _>(cat).is_some());
         assert!(cast_ref::<dyn Feline, _>(cat).is_some());
         assert!(cast_ref::<dyn Canine, _>(cat).is_none());
+        assert!(cast_mut::<dyn Mammal, _>(cat).is_some());
         assert!(cast_mut::<dyn Feline, _>(cat).is_some());
         assert!(cast_mut::<dyn Canine, _>(cat).is_none());
+
+        let mut cat: Box<dyn Mammal> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Mammal = &mut *cat;
+
+        assert!(cast_ref::<dyn Animal, _>(cat).is_some());
+        assert!(cast_ref::<dyn Feline, _>(cat).is_some());
+        assert!(cast_ref::<dyn Canine, _>(cat).is_none());
+        assert!(cast_mut::<dyn Animal, _>(cat).is_some());
+        assert!(cast_mut::<dyn Feline, _>(cat).is_some());
+        assert!(cast_mut::<dyn Canine, _>(cat).is_none());
+
+        let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Feline = &mut *cat;
+
+        assert!(cast_ref::<dyn Animal, _>(cat).is_some());
+        assert!(cast_ref::<dyn Mammal, _>(cat).is_some());
+        assert!(cast_mut::<dyn Animal, _>(cat).is_some());
+        assert!(cast_mut::<dyn Mammal, _>(cat).is_some());
 
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
         let dog: &mut dyn Animal = &mut *dog;
 
+        assert!(cast_ref::<dyn Mammal, _>(dog).is_some());
         assert!(cast_ref::<dyn Feline, _>(dog).is_none());
         assert!(cast_ref::<dyn Canine, _>(dog).is_some());
+        assert!(cast_mut::<dyn Mammal, _>(dog).is_some());
         assert!(cast_mut::<dyn Feline, _>(dog).is_none());
         assert!(cast_mut::<dyn Canine, _>(dog).is_some());
+
+        let mut dog: Box<dyn Mammal> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Mammal = &mut *dog;
+
+        assert!(cast_ref::<dyn Animal, _>(dog).is_some());
+        assert!(cast_ref::<dyn Feline, _>(dog).is_none());
+        assert!(cast_ref::<dyn Canine, _>(dog).is_some());
+        assert!(cast_mut::<dyn Animal, _>(dog).is_some());
+        assert!(cast_mut::<dyn Feline, _>(dog).is_none());
+        assert!(cast_mut::<dyn Canine, _>(dog).is_some());
+
+        let mut dog: Box<dyn Canine> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Canine = &mut *dog;
+
+        assert!(cast_ref::<dyn Animal, _>(dog).is_some());
+        assert!(cast_ref::<dyn Mammal, _>(dog).is_some());
+        assert!(cast_mut::<dyn Animal, _>(dog).is_some());
+        assert!(cast_mut::<dyn Mammal, _>(dog).is_some());
     }
 }
