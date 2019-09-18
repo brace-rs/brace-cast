@@ -6,3 +6,7 @@ description = "A utility library for dynamic casting between trait objects."
 repository = "https://github.com/brace-rs/brace-cast"
 license = "MIT OR Apache-2.0"
 edition = "2018"
+
+[dependencies]
+inventory = "0.1"
+lazy_static = "1.4"
