@@ -2,6 +2,22 @@ use std::any::Any;
 use std::rc::Rc;
 use std::sync::Arc;
 
+pub fn cast_ref<T, U>(item: &U) -> Option<&T>
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    item.cast_as_ref()
+}
+
+pub fn cast_mut<T, U>(item: &mut U) -> Option<&mut T>
+where
+    T: ?Sized,
+    U: CastAsMut<T> + ?Sized,
+{
+    item.cast_as_mut()
+}
+
 pub trait Cast: CastAsAny {
     fn cast_ref<T>(&self) -> Option<&T>
     where
@@ -136,7 +152,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{Cast, CastAsMut, CastAsRef, CastFromMut, CastFromRef};
+    use crate::{cast_mut, cast_ref, Cast, CastAsMut, CastAsRef, CastFromMut, CastFromRef};
 
     trait Animal: Cast {
         fn name(&self) -> &str;
@@ -397,30 +413,30 @@ mod tests {
         let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
         let cat: &mut dyn Animal = &mut *cat;
 
-        assert!(CastAsRef::<Cat>::cast_as_ref(cat).is_some());
-        assert!(CastAsRef::<Dog>::cast_as_ref(cat).is_none());
-        assert!(CastAsMut::<Cat>::cast_as_mut(cat).is_some());
-        assert!(CastAsMut::<Dog>::cast_as_mut(cat).is_none());
+        assert!(cast_ref::<Cat, _>(cat).is_some());
+        assert!(cast_ref::<Dog, _>(cat).is_none());
+        assert!(cast_mut::<Cat, _>(cat).is_some());
+        assert!(cast_mut::<Dog, _>(cat).is_none());
 
         let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
         let cat: &mut dyn Feline = &mut *cat;
 
-        assert!(CastAsRef::<Cat>::cast_as_ref(cat).is_some());
-        assert!(CastAsMut::<Cat>::cast_as_mut(cat).is_some());
+        assert!(cast_ref::<Cat, _>(cat).is_some());
+        assert!(cast_mut::<Cat, _>(cat).is_some());
 
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
         let dog: &mut dyn Animal = &mut *dog;
 
-        assert!(CastAsRef::<Cat>::cast_as_ref(dog).is_none());
-        assert!(CastAsRef::<Dog>::cast_as_ref(dog).is_some());
-        assert!(CastAsMut::<Cat>::cast_as_mut(dog).is_none());
-        assert!(CastAsMut::<Dog>::cast_as_mut(dog).is_some());
+        assert!(cast_ref::<Cat, _>(dog).is_none());
+        assert!(cast_ref::<Dog, _>(dog).is_some());
+        assert!(cast_mut::<Cat, _>(dog).is_none());
+        assert!(cast_mut::<Dog, _>(dog).is_some());
 
         let mut dog: Box<dyn Canine> = Box::new(Dog::new("Rover"));
         let dog: &mut dyn Canine = &mut *dog;
 
-        assert!(CastAsRef::<Dog>::cast_as_ref(dog).is_some());
-        assert!(CastAsMut::<Dog>::cast_as_mut(dog).is_some());
+        assert!(cast_ref::<Dog, _>(dog).is_some());
+        assert!(cast_mut::<Dog, _>(dog).is_some());
     }
 
     #[test]
@@ -445,17 +461,17 @@ mod tests {
         let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
         let cat: &mut dyn Animal = &mut *cat;
 
-        assert!(CastAsRef::<dyn Feline>::cast_as_ref(cat).is_some());
-        assert!(CastAsRef::<dyn Canine>::cast_as_ref(cat).is_none());
-        assert!(CastAsMut::<dyn Feline>::cast_as_mut(cat).is_some());
-        assert!(CastAsMut::<dyn Canine>::cast_as_mut(cat).is_none());
+        assert!(cast_ref::<dyn Feline, _>(cat).is_some());
+        assert!(cast_ref::<dyn Canine, _>(cat).is_none());
+        assert!(cast_mut::<dyn Feline, _>(cat).is_some());
+        assert!(cast_mut::<dyn Canine, _>(cat).is_none());
 
         let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
         let dog: &mut dyn Animal = &mut *dog;
 
-        assert!(CastAsRef::<dyn Feline>::cast_as_ref(dog).is_none());
-        assert!(CastAsRef::<dyn Canine>::cast_as_ref(dog).is_some());
-        assert!(CastAsMut::<dyn Feline>::cast_as_mut(dog).is_none());
-        assert!(CastAsMut::<dyn Canine>::cast_as_mut(dog).is_some());
+        assert!(cast_ref::<dyn Feline, _>(dog).is_none());
+        assert!(cast_ref::<dyn Canine, _>(dog).is_some());
+        assert!(cast_mut::<dyn Feline, _>(dog).is_none());
+        assert!(cast_mut::<dyn Canine, _>(dog).is_some());
     }
 }
