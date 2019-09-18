@@ -1,13 +1,17 @@
-pub trait Cast {
+use std::any::Any;
+use std::rc::Rc;
+use std::sync::Arc;
+
+pub trait Cast: CastAsAny {
     fn cast_ref<T>(&self) -> Option<&T>
     where
         T: ?Sized,
-        Self: CastAsRef<T>;
+        Self: CastAsRef<T> + Sized;
 
     fn cast_mut<T>(&mut self) -> Option<&mut T>
     where
         T: ?Sized,
-        Self: CastAsMut<T>;
+        Self: CastAsMut<T> + Sized;
 }
 
 impl<T> Cast for T {
@@ -28,12 +32,39 @@ impl<T> Cast for T {
     }
 }
 
+pub trait CastAsAny {
+    fn cast_as_any_ref(&self) -> &dyn Any
+    where
+        Self: 'static;
+
+    fn cast_as_any_mut(&mut self) -> &mut dyn Any
+    where
+        Self: 'static;
+}
+
+impl<T> CastAsAny for T {
+    fn cast_as_any_ref(&self) -> &dyn Any
+    where
+        T: 'static,
+    {
+        self
+    }
+
+    fn cast_as_any_mut(&mut self) -> &mut dyn Any
+    where
+        T: 'static,
+    {
+        self
+    }
+}
+
 pub trait CastAsRef<T: ?Sized> {
     fn cast_as_ref(&self) -> Option<&T>;
 }
 
 impl<T, U> CastAsRef<U> for T
 where
+    T: ?Sized,
     U: CastFromRef<T> + ?Sized,
 {
     fn cast_as_ref(&self) -> Option<&U> {
@@ -47,6 +78,7 @@ pub trait CastAsMut<T: ?Sized> {
 
 impl<T, U> CastAsMut<U> for T
 where
+    T: ?Sized,
     U: CastFromMut<T> + ?Sized,
 {
     fn cast_as_mut(&mut self) -> Option<&mut U> {
@@ -54,24 +86,73 @@ where
     }
 }
 
-pub trait CastFromRef<T> {
+pub trait CastFromRef<T: ?Sized> {
     fn cast_from_ref(from: &T) -> Option<&Self>;
 }
 
-pub trait CastFromMut<T> {
+impl<T, U> CastFromRef<Box<U>> for T
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    fn cast_from_ref(from: &Box<U>) -> Option<&Self> {
+        (**from).cast_as_ref()
+    }
+}
+
+impl<T, U> CastFromRef<Rc<U>> for T
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    fn cast_from_ref(from: &Rc<U>) -> Option<&Self> {
+        (**from).cast_as_ref()
+    }
+}
+
+impl<T, U> CastFromRef<Arc<U>> for T
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    fn cast_from_ref(from: &Arc<U>) -> Option<&Self> {
+        (**from).cast_as_ref()
+    }
+}
+
+pub trait CastFromMut<T: ?Sized> {
     fn cast_from_mut(from: &mut T) -> Option<&mut Self>;
+}
+
+impl<T, U> CastFromMut<Box<U>> for T
+where
+    T: ?Sized,
+    U: CastAsMut<T> + ?Sized,
+{
+    fn cast_from_mut(from: &mut Box<U>) -> Option<&mut Self> {
+        (**from).cast_as_mut()
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::{Cast, CastAsMut, CastAsRef, CastFromMut, CastFromRef};
 
-    trait Animal {
+    trait Animal: Cast {
         fn name(&self) -> &str;
+    }
+
+    trait Feline: Animal {
+        fn eyes(&self) -> &usize;
+    }
+
+    trait Canine: Animal {
+        fn ears(&self) -> &usize;
     }
 
     struct Cat {
         name: String,
+        eyes: usize,
     }
 
     impl Cat {
@@ -79,7 +160,10 @@ mod tests {
         where
             S: Into<String>,
         {
-            Self { name: name.into() }
+            Self {
+                name: name.into(),
+                eyes: 2,
+            }
         }
     }
 
@@ -101,8 +185,71 @@ mod tests {
         }
     }
 
+    impl CastAsRef<Cat> for dyn Animal {
+        fn cast_as_ref(&self) -> Option<&Cat> {
+            self.cast_as_any_ref().downcast_ref()
+        }
+    }
+
+    impl CastAsMut<Cat> for dyn Animal {
+        fn cast_as_mut(&mut self) -> Option<&mut Cat> {
+            self.cast_as_any_mut().downcast_mut()
+        }
+    }
+
+    impl Feline for Cat {
+        fn eyes(&self) -> &usize {
+            &self.eyes
+        }
+    }
+
+    impl CastAsRef<dyn Feline> for Cat {
+        fn cast_as_ref(&self) -> Option<&(dyn Feline + 'static)> {
+            Some(self as &dyn Feline)
+        }
+    }
+
+    impl CastAsMut<dyn Feline> for Cat {
+        fn cast_as_mut(&mut self) -> Option<&mut (dyn Feline + 'static)> {
+            Some(self as &mut dyn Feline)
+        }
+    }
+
+    impl CastAsRef<Cat> for dyn Feline {
+        fn cast_as_ref(&self) -> Option<&Cat> {
+            self.cast_as_any_ref().downcast_ref()
+        }
+    }
+
+    impl CastAsMut<Cat> for dyn Feline {
+        fn cast_as_mut(&mut self) -> Option<&mut Cat> {
+            self.cast_as_any_mut().downcast_mut()
+        }
+    }
+
+    impl CastAsRef<dyn Feline> for dyn Animal {
+        fn cast_as_ref(&self) -> Option<&(dyn Feline + 'static)> {
+            if let Some(cat) = self.cast_as_any_ref().downcast_ref::<Cat>() {
+                return cat.cast_ref();
+            }
+
+            None
+        }
+    }
+
+    impl CastAsMut<dyn Feline> for dyn Animal {
+        fn cast_as_mut(&mut self) -> Option<&mut (dyn Feline + 'static)> {
+            if let Some(cat) = self.cast_as_any_mut().downcast_mut::<Cat>() {
+                return cat.cast_mut();
+            }
+
+            None
+        }
+    }
+
     struct Dog {
         name: String,
+        ears: usize,
     }
 
     impl Dog {
@@ -110,7 +257,10 @@ mod tests {
         where
             S: Into<String>,
         {
-            Self { name: name.into() }
+            Self {
+                name: name.into(),
+                ears: 2,
+            }
         }
     }
 
@@ -132,16 +282,180 @@ mod tests {
         }
     }
 
+    impl CastFromRef<dyn Animal> for Dog {
+        fn cast_from_ref<'a>(from: &'a (dyn Animal + 'static)) -> Option<&'a Self> {
+            from.cast_as_any_ref().downcast_ref()
+        }
+    }
+
+    impl CastFromMut<dyn Animal> for Dog {
+        fn cast_from_mut<'a>(from: &'a mut (dyn Animal + 'static)) -> Option<&'a mut Self> {
+            from.cast_as_any_mut().downcast_mut()
+        }
+    }
+
+    impl Canine for Dog {
+        fn ears(&self) -> &usize {
+            &self.ears
+        }
+    }
+
+    impl CastFromRef<Dog> for dyn Canine {
+        fn cast_from_ref(from: &Dog) -> Option<&(dyn Canine + 'static)> {
+            Some(from as &dyn Canine)
+        }
+    }
+
+    impl CastFromMut<Dog> for dyn Canine {
+        fn cast_from_mut(from: &mut Dog) -> Option<&mut (dyn Canine + 'static)> {
+            Some(from as &mut dyn Canine)
+        }
+    }
+
+    impl CastFromRef<dyn Canine> for Dog {
+        fn cast_from_ref<'a>(from: &'a (dyn Canine + 'static)) -> Option<&'a Self> {
+            from.cast_as_any_ref().downcast_ref()
+        }
+    }
+
+    impl CastFromMut<dyn Canine> for Dog {
+        fn cast_from_mut<'a>(from: &'a mut (dyn Canine + 'static)) -> Option<&'a mut Self> {
+            from.cast_as_any_mut().downcast_mut()
+        }
+    }
+
+    impl CastFromRef<dyn Animal> for dyn Canine {
+        fn cast_from_ref<'a>(
+            from: &'a (dyn Animal + 'static),
+        ) -> Option<&'a (dyn Canine + 'static)> {
+            if let Some(dog) = from.cast_as_any_ref().downcast_ref::<Dog>() {
+                return dog.cast_ref();
+            }
+
+            None
+        }
+    }
+
+    impl CastFromMut<dyn Animal> for dyn Canine {
+        fn cast_from_mut<'a>(
+            from: &'a mut (dyn Animal + 'static),
+        ) -> Option<&'a mut (dyn Canine + 'static)> {
+            if let Some(dog) = from.cast_as_any_mut().downcast_mut::<Dog>() {
+                return dog.cast_mut();
+            }
+
+            None
+        }
+    }
+
     #[test]
     fn test_cast_struct_as_trait_object() {
         let mut cat = Cat::new("Felix");
 
         assert!(cat.cast_ref::<dyn Animal>().is_some());
         assert!(cat.cast_mut::<dyn Animal>().is_some());
+        assert!(cat.cast_ref::<dyn Feline>().is_some());
+        assert!(cat.cast_mut::<dyn Feline>().is_some());
 
         let mut dog = Dog::new("Rover");
 
         assert!(dog.cast_ref::<dyn Animal>().is_some());
         assert!(dog.cast_mut::<dyn Animal>().is_some());
+        assert!(dog.cast_ref::<dyn Canine>().is_some());
+        assert!(dog.cast_mut::<dyn Canine>().is_some());
+    }
+
+    #[test]
+    fn test_cast_trait_object_box_as_struct() {
+        let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<Cat>().is_some());
+        assert!(cat.cast_ref::<Dog>().is_none());
+        assert!(cat.cast_mut::<Cat>().is_some());
+        assert!(cat.cast_mut::<Dog>().is_none());
+
+        let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<Cat>().is_some());
+        assert!(cat.cast_mut::<Cat>().is_some());
+
+        let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<Cat>().is_none());
+        assert!(dog.cast_ref::<Dog>().is_some());
+        assert!(dog.cast_mut::<Cat>().is_none());
+        assert!(dog.cast_mut::<Dog>().is_some());
+
+        let mut dog: Box<dyn Canine> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<Dog>().is_some());
+        assert!(dog.cast_mut::<Dog>().is_some());
+    }
+
+    #[test]
+    fn test_cast_trait_object_ref_as_struct() {
+        let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Animal = &mut *cat;
+
+        assert!(CastAsRef::<Cat>::cast_as_ref(cat).is_some());
+        assert!(CastAsRef::<Dog>::cast_as_ref(cat).is_none());
+        assert!(CastAsMut::<Cat>::cast_as_mut(cat).is_some());
+        assert!(CastAsMut::<Dog>::cast_as_mut(cat).is_none());
+
+        let mut cat: Box<dyn Feline> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Feline = &mut *cat;
+
+        assert!(CastAsRef::<Cat>::cast_as_ref(cat).is_some());
+        assert!(CastAsMut::<Cat>::cast_as_mut(cat).is_some());
+
+        let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Animal = &mut *dog;
+
+        assert!(CastAsRef::<Cat>::cast_as_ref(dog).is_none());
+        assert!(CastAsRef::<Dog>::cast_as_ref(dog).is_some());
+        assert!(CastAsMut::<Cat>::cast_as_mut(dog).is_none());
+        assert!(CastAsMut::<Dog>::cast_as_mut(dog).is_some());
+
+        let mut dog: Box<dyn Canine> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Canine = &mut *dog;
+
+        assert!(CastAsRef::<Dog>::cast_as_ref(dog).is_some());
+        assert!(CastAsMut::<Dog>::cast_as_mut(dog).is_some());
+    }
+
+    #[test]
+    fn test_cast_trait_object_box_as_trait_object() {
+        let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
+
+        assert!(cat.cast_ref::<dyn Feline>().is_some());
+        assert!(cat.cast_ref::<dyn Canine>().is_none());
+        assert!(cat.cast_mut::<dyn Feline>().is_some());
+        assert!(cat.cast_mut::<dyn Canine>().is_none());
+
+        let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
+
+        assert!(dog.cast_ref::<dyn Feline>().is_none());
+        assert!(dog.cast_ref::<dyn Canine>().is_some());
+        assert!(dog.cast_mut::<dyn Feline>().is_none());
+        assert!(dog.cast_mut::<dyn Canine>().is_some());
+    }
+
+    #[test]
+    fn test_cast_trait_object_ref_as_trait_object() {
+        let mut cat: Box<dyn Animal> = Box::new(Cat::new("Felix"));
+        let cat: &mut dyn Animal = &mut *cat;
+
+        assert!(CastAsRef::<dyn Feline>::cast_as_ref(cat).is_some());
+        assert!(CastAsRef::<dyn Canine>::cast_as_ref(cat).is_none());
+        assert!(CastAsMut::<dyn Feline>::cast_as_mut(cat).is_some());
+        assert!(CastAsMut::<dyn Canine>::cast_as_mut(cat).is_none());
+
+        let mut dog: Box<dyn Animal> = Box::new(Dog::new("Rover"));
+        let dog: &mut dyn Animal = &mut *dog;
+
+        assert!(CastAsRef::<dyn Feline>::cast_as_ref(dog).is_none());
+        assert!(CastAsRef::<dyn Canine>::cast_as_ref(dog).is_some());
+        assert!(CastAsMut::<dyn Feline>::cast_as_mut(dog).is_none());
+        assert!(CastAsMut::<dyn Canine>::cast_as_mut(dog).is_some());
     }
 }
