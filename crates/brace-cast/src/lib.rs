@@ -1,3 +1,33 @@
+pub trait Cast {
+    fn cast_ref<T>(&self) -> Option<&T>
+    where
+        T: ?Sized,
+        Self: CastAsRef<T>;
+
+    fn cast_mut<T>(&mut self) -> Option<&mut T>
+    where
+        T: ?Sized,
+        Self: CastAsMut<T>;
+}
+
+impl<T> Cast for T {
+    fn cast_ref<U>(&self) -> Option<&U>
+    where
+        U: ?Sized,
+        Self: CastAsRef<U>,
+    {
+        self.cast_as_ref()
+    }
+
+    fn cast_mut<U>(&mut self) -> Option<&mut U>
+    where
+        U: ?Sized,
+        Self: CastAsMut<U>,
+    {
+        self.cast_as_mut()
+    }
+}
+
 pub trait CastAsRef<T: ?Sized> {
     fn cast_as_ref(&self) -> Option<&T>;
 }
@@ -34,7 +64,7 @@ pub trait CastFromMut<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{CastAsMut, CastAsRef, CastFromMut, CastFromRef};
+    use crate::{Cast, CastAsMut, CastAsRef, CastFromMut, CastFromRef};
 
     trait Animal {
         fn name(&self) -> &str;
@@ -105,11 +135,13 @@ mod tests {
     #[test]
     fn test_cast_struct_as_trait_object() {
         let mut cat = Cat::new("Felix");
-        let _: &dyn Animal = cat.cast_as_ref().unwrap();
-        let _: &mut dyn Animal = cat.cast_as_mut().unwrap();
+
+        assert!(cat.cast_ref::<dyn Animal>().is_some());
+        assert!(cat.cast_mut::<dyn Animal>().is_some());
 
         let mut dog = Dog::new("Rover");
-        let _: &dyn Animal = dog.cast_as_ref().unwrap();
-        let _: &mut dyn Animal = dog.cast_as_mut().unwrap();
+
+        assert!(dog.cast_ref::<dyn Animal>().is_some());
+        assert!(dog.cast_mut::<dyn Animal>().is_some());
     }
 }
