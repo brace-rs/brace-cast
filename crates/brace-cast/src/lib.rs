@@ -1,4 +1,6 @@
 use std::any::Any;
+use std::rc::Rc;
+use std::sync::Arc;
 
 pub trait Cast: CastAsAny {
     fn cast_ref<T>(&self) -> Option<&T>
@@ -94,6 +96,26 @@ where
     U: CastAsRef<T> + ?Sized,
 {
     fn cast_from_ref(from: &Box<U>) -> Option<&Self> {
+        (**from).cast_as_ref()
+    }
+}
+
+impl<T, U> CastFromRef<Rc<U>> for T
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    fn cast_from_ref(from: &Rc<U>) -> Option<&Self> {
+        (**from).cast_as_ref()
+    }
+}
+
+impl<T, U> CastFromRef<Arc<U>> for T
+where
+    T: ?Sized,
+    U: CastAsRef<T> + ?Sized,
+{
+    fn cast_from_ref(from: &Arc<U>) -> Option<&Self> {
         (**from).cast_as_ref()
     }
 }
