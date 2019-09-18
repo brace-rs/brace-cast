@@ -2,6 +2,8 @@ use std::any::Any;
 use std::rc::Rc;
 use std::sync::Arc;
 
+mod macros;
+
 pub fn cast_ref<T, U>(item: &U) -> Option<&T>
 where
     T: ?Sized,
@@ -152,7 +154,10 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{cast_mut, cast_ref, Cast, CastAsMut, CastAsRef, CastFromMut, CastFromRef};
+    use crate::{
+        cast_mut, cast_ref, impl_cast_as, impl_cast_from, Cast, CastAsMut, CastAsRef, CastFromMut,
+        CastFromRef,
+    };
 
     trait Animal: Cast {
         fn name(&self) -> &str;
@@ -189,17 +194,7 @@ mod tests {
         }
     }
 
-    impl CastAsRef<dyn Animal> for Cat {
-        fn cast_as_ref(&self) -> Option<&(dyn Animal + 'static)> {
-            Some(self as &dyn Animal)
-        }
-    }
-
-    impl CastAsMut<dyn Animal> for Cat {
-        fn cast_as_mut(&mut self) -> Option<&mut (dyn Animal + 'static)> {
-            Some(self as &mut dyn Animal)
-        }
-    }
+    impl_cast_as!(struct Cat: Animal, Feline);
 
     impl CastAsRef<Cat> for dyn Animal {
         fn cast_as_ref(&self) -> Option<&Cat> {
@@ -216,18 +211,6 @@ mod tests {
     impl Feline for Cat {
         fn eyes(&self) -> &usize {
             &self.eyes
-        }
-    }
-
-    impl CastAsRef<dyn Feline> for Cat {
-        fn cast_as_ref(&self) -> Option<&(dyn Feline + 'static)> {
-            Some(self as &dyn Feline)
-        }
-    }
-
-    impl CastAsMut<dyn Feline> for Cat {
-        fn cast_as_mut(&mut self) -> Option<&mut (dyn Feline + 'static)> {
-            Some(self as &mut dyn Feline)
         }
     }
 
@@ -286,17 +269,7 @@ mod tests {
         }
     }
 
-    impl CastFromRef<Dog> for dyn Animal {
-        fn cast_from_ref(from: &Dog) -> Option<&(dyn Animal + 'static)> {
-            Some(from as &dyn Animal)
-        }
-    }
-
-    impl CastFromMut<Dog> for dyn Animal {
-        fn cast_from_mut(from: &mut Dog) -> Option<&mut (dyn Animal + 'static)> {
-            Some(from as &mut dyn Animal)
-        }
-    }
+    impl_cast_from!(struct Dog: Animal, Canine);
 
     impl CastFromRef<dyn Animal> for Dog {
         fn cast_from_ref<'a>(from: &'a (dyn Animal + 'static)) -> Option<&'a Self> {
@@ -313,18 +286,6 @@ mod tests {
     impl Canine for Dog {
         fn ears(&self) -> &usize {
             &self.ears
-        }
-    }
-
-    impl CastFromRef<Dog> for dyn Canine {
-        fn cast_from_ref(from: &Dog) -> Option<&(dyn Canine + 'static)> {
-            Some(from as &dyn Canine)
-        }
-    }
-
-    impl CastFromMut<Dog> for dyn Canine {
-        fn cast_from_mut(from: &mut Dog) -> Option<&mut (dyn Canine + 'static)> {
-            Some(from as &mut dyn Canine)
         }
     }
 
