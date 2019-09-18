@@ -200,6 +200,9 @@ mod tests {
         }
     }
 
+    impl_cast_as!(struct Cat: Animal, Feline);
+    impl_cast_as!(trait Animal: Feline);
+
     struct Dog {
         name: String,
         ears: usize,
@@ -230,8 +233,7 @@ mod tests {
     }
 
     impl_cast_from!(struct Dog: Animal, Canine);
-    impl_cast_as!(struct Cat: Animal, Feline);
-    impl_cast_as!(trait Animal: Feline, Canine);
+    impl_cast_from!(trait Animal: Canine);
 
     #[test]
     fn test_cast_struct_as_trait_object() {
