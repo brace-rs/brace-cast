@@ -1,3 +1,6 @@
+pub use std::any::Any;
+pub use std::option::Option;
+
 #[macro_export]
 macro_rules! register_cast_ref {
     (struct $from:path : $as:path) => {
@@ -5,10 +8,10 @@ macro_rules! register_cast_ref {
             #![crate = $crate]
             $crate::registry::CastRefRecord::new::<$from, dyn $as>(
                 |item| {
-                    let item: &$from = std::any::Any::downcast_ref(item)?;
+                    let item: &$from = $crate::macros::Any::downcast_ref(item)?;
                     let item: &dyn $as = item;
 
-                    std::option::Option::Some(item)
+                    $crate::macros::Option::Some(item)
                 }
             )
         }
@@ -22,10 +25,10 @@ macro_rules! register_cast_mut {
             #![crate = $crate]
             $crate::registry::CastMutRecord::new::<$from, dyn $as>(
                 |item| {
-                    let item: &mut $from = std::any::Any::downcast_mut(item)?;
+                    let item: &mut $from = $crate::macros::Any::downcast_mut(item)?;
                     let item: &mut dyn $as = item;
 
-                    std::option::Option::Some(item)
+                    $crate::macros::Option::Some(item)
                 }
             )
         }
@@ -64,8 +67,8 @@ macro_rules! impl_cast_as_ref {
         where
             $from: $as,
         {
-            fn cast_as_ref(&self) -> std::option::Option<&(dyn $as + 'static)> {
-                std::option::Option::Some(self as &dyn $as)
+            fn cast_as_ref(&self) -> $crate::macros::Option<&(dyn $as + 'static)> {
+                $crate::macros::Option::Some(self as &dyn $as)
             }
         }
 
@@ -73,8 +76,8 @@ macro_rules! impl_cast_as_ref {
         where
             $from: $as + $crate::Cast,
         {
-            fn cast_from_ref<'a>(from: &'a (dyn $as + 'static)) -> std::option::Option<&'a Self> {
-                std::any::Any::downcast_ref($crate::CastAsAny::cast_as_any_ref(from))
+            fn cast_from_ref<'a>(from: &'a (dyn $as + 'static)) -> $crate::macros::Option<&'a Self> {
+                $crate::macros::Any::downcast_ref($crate::CastAsAny::cast_as_any_ref(from))
             }
         }
     };
@@ -88,13 +91,13 @@ macro_rules! impl_cast_as_ref {
 
     (trait $from:path : $as:path) => {
         impl $crate::CastAsRef<dyn $as> for dyn $from {
-            fn cast_as_ref(&self) -> std::option::Option<&(dyn $as + 'static)> {
+            fn cast_as_ref(&self) -> $crate::macros::Option<&(dyn $as + 'static)> {
                 $crate::registry::cast_from_ref::<dyn $from, dyn $as>(self)
             }
         }
 
         impl $crate::CastFromRef<dyn $as> for dyn $from {
-            fn cast_from_ref<'a>(from: &'a (dyn $as + 'static)) -> std::option::Option<&'a Self> {
+            fn cast_from_ref<'a>(from: &'a (dyn $as + 'static)) -> $crate::macros::Option<&'a Self> {
                 $crate::registry::cast_from_ref::<dyn $as, dyn $from>(from)
             }
         }
@@ -117,8 +120,8 @@ macro_rules! impl_cast_as_mut {
         where
             $from: $as,
         {
-            fn cast_as_mut(&mut self) -> std::option::Option<&mut (dyn $as + 'static)> {
-                std::option::Option::Some(self as &mut dyn $as)
+            fn cast_as_mut(&mut self) -> $crate::macros::Option<&mut (dyn $as + 'static)> {
+                $crate::macros::Option::Some(self as &mut dyn $as)
             }
         }
 
@@ -126,8 +129,8 @@ macro_rules! impl_cast_as_mut {
         where
             $from: $as + $crate::Cast,
         {
-            fn cast_from_mut<'a>(from: &'a mut (dyn $as + 'static)) -> std::option::Option<&'a mut Self> {
-                std::any::Any::downcast_mut($crate::CastAsAny::cast_as_any_mut(from))
+            fn cast_from_mut<'a>(from: &'a mut (dyn $as + 'static)) -> $crate::macros::Option<&'a mut Self> {
+                $crate::macros::Any::downcast_mut($crate::CastAsAny::cast_as_any_mut(from))
             }
         }
     };
@@ -141,13 +144,13 @@ macro_rules! impl_cast_as_mut {
 
     (trait $from:path : $as:path) => {
         impl $crate::CastAsMut<dyn $as> for dyn $from {
-            fn cast_as_mut(&mut self) -> std::option::Option<&mut (dyn $as + 'static)> {
+            fn cast_as_mut(&mut self) -> $crate::macros::Option<&mut (dyn $as + 'static)> {
                 $crate::registry::cast_from_mut::<dyn $from, dyn $as>(self)
             }
         }
 
         impl $crate::CastFromMut<dyn $as> for dyn $from {
-            fn cast_from_mut<'a>(from: &'a mut (dyn $as + 'static)) -> std::option::Option<&'a mut Self> {
+            fn cast_from_mut<'a>(from: &'a mut (dyn $as + 'static)) -> $crate::macros::Option<&'a mut Self> {
                 $crate::registry::cast_from_mut::<dyn $as, dyn $from>(from)
             }
         }
@@ -193,8 +196,8 @@ macro_rules! impl_cast_from_ref {
         where
             $from: $as,
         {
-            fn cast_from_ref(from: &$from) -> std::option::Option<&Self> {
-                std::option::Option::Some(from as &dyn $as)
+            fn cast_from_ref(from: &$from) -> $crate::macros::Option<&Self> {
+                $crate::macros::Option::Some(from as &dyn $as)
             }
         }
 
@@ -202,8 +205,8 @@ macro_rules! impl_cast_from_ref {
         where
             $from: $as + $crate::Cast,
         {
-            fn cast_as_ref(&self) -> std::option::Option<&$from> {
-                std::any::Any::downcast_ref($crate::CastAsAny::cast_as_any_ref(self))
+            fn cast_as_ref(&self) -> $crate::macros::Option<&$from> {
+                $crate::macros::Any::downcast_ref($crate::CastAsAny::cast_as_any_ref(self))
             }
         }
     };
@@ -217,13 +220,13 @@ macro_rules! impl_cast_from_ref {
 
     (trait $from:path : $as:path) => {
         impl $crate::CastFromRef<dyn $from> for dyn $as {
-            fn cast_from_ref<'a>(from: &'a (dyn $from + 'static)) -> std::option::Option<&'a Self> {
+            fn cast_from_ref<'a>(from: &'a (dyn $from + 'static)) -> $crate::macros::Option<&'a Self> {
                 $crate::registry::cast_from_ref::<dyn $from, dyn $as>(from)
             }
         }
 
         impl $crate::CastAsRef<dyn $from> for dyn $as {
-            fn cast_as_ref(&self) -> std::option::Option<&(dyn $from + 'static)> {
+            fn cast_as_ref(&self) -> $crate::macros::Option<&(dyn $from + 'static)> {
                 $crate::registry::cast_from_ref::<dyn $as, dyn $from>(self)
             }
         }
@@ -246,8 +249,8 @@ macro_rules! impl_cast_from_mut {
         where
             $from: $as,
         {
-            fn cast_from_mut(from: &mut $from) -> std::option::Option<&mut Self> {
-                std::option::Option::Some(from as &mut dyn $as)
+            fn cast_from_mut(from: &mut $from) -> $crate::macros::Option<&mut Self> {
+                $crate::macros::Option::Some(from as &mut dyn $as)
             }
         }
 
@@ -255,8 +258,8 @@ macro_rules! impl_cast_from_mut {
         where
             $from: $as + $crate::Cast,
         {
-            fn cast_as_mut(&mut self) -> std::option::Option<&mut $from> {
-                std::any::Any::downcast_mut($crate::CastAsAny::cast_as_any_mut(self))
+            fn cast_as_mut(&mut self) -> $crate::macros::Option<&mut $from> {
+                $crate::macros::Any::downcast_mut($crate::CastAsAny::cast_as_any_mut(self))
             }
         }
     };
@@ -270,13 +273,13 @@ macro_rules! impl_cast_from_mut {
 
     (trait $from:path : $as:path) => {
         impl $crate::CastFromMut<dyn $from> for dyn $as {
-            fn cast_from_mut<'a>(from: &'a mut (dyn $from + 'static)) -> std::option::Option<&'a mut Self> {
+            fn cast_from_mut<'a>(from: &'a mut (dyn $from + 'static)) -> $crate::macros::Option<&'a mut Self> {
                 $crate::registry::cast_from_mut::<dyn $from, dyn $as>(from)
             }
         }
 
         impl $crate::CastAsMut<dyn $from> for dyn $as {
-            fn cast_as_mut(&mut self) -> std::option::Option<&mut (dyn $from + 'static)> {
+            fn cast_as_mut(&mut self) -> $crate::macros::Option<&mut (dyn $from + 'static)> {
                 $crate::registry::cast_from_mut::<dyn $as, dyn $from>(self)
             }
         }

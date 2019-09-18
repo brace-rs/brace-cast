@@ -4,8 +4,7 @@ use std::sync::Arc;
 
 pub use inventory;
 
-mod macros;
-
+pub mod macros;
 pub mod registry;
 
 pub fn cast_ref<T, U>(item: &U) -> Option<&T>
