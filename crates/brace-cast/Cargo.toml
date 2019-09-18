@@ -1,0 +1,8 @@
+[package]
+name = "brace-cast"
+version = "0.1.0"
+authors = ["Daniel Balcomb <daniel.balcomb@gmail.com>"]
+description = "A utility library for dynamic casting between trait objects."
+repository = "https://github.com/brace-rs/brace-cast"
+license = "MIT OR Apache-2.0"
+edition = "2018"
