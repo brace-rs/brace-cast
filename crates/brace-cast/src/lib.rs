@@ -196,33 +196,9 @@ mod tests {
 
     impl_cast_as!(struct Cat: Animal, Feline);
 
-    impl CastAsRef<Cat> for dyn Animal {
-        fn cast_as_ref(&self) -> Option<&Cat> {
-            self.cast_as_any_ref().downcast_ref()
-        }
-    }
-
-    impl CastAsMut<Cat> for dyn Animal {
-        fn cast_as_mut(&mut self) -> Option<&mut Cat> {
-            self.cast_as_any_mut().downcast_mut()
-        }
-    }
-
     impl Feline for Cat {
         fn eyes(&self) -> &usize {
             &self.eyes
-        }
-    }
-
-    impl CastAsRef<Cat> for dyn Feline {
-        fn cast_as_ref(&self) -> Option<&Cat> {
-            self.cast_as_any_ref().downcast_ref()
-        }
-    }
-
-    impl CastAsMut<Cat> for dyn Feline {
-        fn cast_as_mut(&mut self) -> Option<&mut Cat> {
-            self.cast_as_any_mut().downcast_mut()
         }
     }
 
@@ -271,33 +247,9 @@ mod tests {
 
     impl_cast_from!(struct Dog: Animal, Canine);
 
-    impl CastFromRef<dyn Animal> for Dog {
-        fn cast_from_ref<'a>(from: &'a (dyn Animal + 'static)) -> Option<&'a Self> {
-            from.cast_as_any_ref().downcast_ref()
-        }
-    }
-
-    impl CastFromMut<dyn Animal> for Dog {
-        fn cast_from_mut<'a>(from: &'a mut (dyn Animal + 'static)) -> Option<&'a mut Self> {
-            from.cast_as_any_mut().downcast_mut()
-        }
-    }
-
     impl Canine for Dog {
         fn ears(&self) -> &usize {
             &self.ears
-        }
-    }
-
-    impl CastFromRef<dyn Canine> for Dog {
-        fn cast_from_ref<'a>(from: &'a (dyn Canine + 'static)) -> Option<&'a Self> {
-            from.cast_as_any_ref().downcast_ref()
-        }
-    }
-
-    impl CastFromMut<dyn Canine> for Dog {
-        fn cast_from_mut<'a>(from: &'a mut (dyn Canine + 'static)) -> Option<&'a mut Self> {
-            from.cast_as_any_mut().downcast_mut()
         }
     }
 
