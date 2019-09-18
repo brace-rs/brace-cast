@@ -2,13 +2,39 @@ pub trait CastAsRef<T: ?Sized> {
     fn cast_as_ref(&self) -> Option<&T>;
 }
 
+impl<T, U> CastAsRef<U> for T
+where
+    U: CastFromRef<T> + ?Sized,
+{
+    fn cast_as_ref(&self) -> Option<&U> {
+        CastFromRef::cast_from_ref(self)
+    }
+}
+
 pub trait CastAsMut<T: ?Sized> {
     fn cast_as_mut(&mut self) -> Option<&mut T>;
 }
 
+impl<T, U> CastAsMut<U> for T
+where
+    U: CastFromMut<T> + ?Sized,
+{
+    fn cast_as_mut(&mut self) -> Option<&mut U> {
+        CastFromMut::cast_from_mut(self)
+    }
+}
+
+pub trait CastFromRef<T> {
+    fn cast_from_ref(from: &T) -> Option<&Self>;
+}
+
+pub trait CastFromMut<T> {
+    fn cast_from_mut(from: &mut T) -> Option<&mut Self>;
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::{CastAsMut, CastAsRef};
+    use crate::{CastAsMut, CastAsRef, CastFromMut, CastFromRef};
 
     trait Animal {
         fn name(&self) -> &str;
@@ -64,15 +90,15 @@ mod tests {
         }
     }
 
-    impl CastAsRef<dyn Animal> for Dog {
-        fn cast_as_ref(&self) -> Option<&(dyn Animal + 'static)> {
-            Some(self as &dyn Animal)
+    impl CastFromRef<Dog> for dyn Animal {
+        fn cast_from_ref(from: &Dog) -> Option<&(dyn Animal + 'static)> {
+            Some(from as &dyn Animal)
         }
     }
 
-    impl CastAsMut<dyn Animal> for Dog {
-        fn cast_as_mut(&mut self) -> Option<&mut (dyn Animal + 'static)> {
-            Some(self as &mut dyn Animal)
+    impl CastFromMut<Dog> for dyn Animal {
+        fn cast_from_mut(from: &mut Dog) -> Option<&mut (dyn Animal + 'static)> {
+            Some(from as &mut dyn Animal)
         }
     }
 
