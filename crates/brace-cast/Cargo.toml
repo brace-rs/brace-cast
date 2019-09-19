@@ -8,5 +8,6 @@ license = "MIT OR Apache-2.0"
 edition = "2018"
 
 [dependencies]
+brace-cast-macros = { path = "../brace-cast-macros" }
 inventory = "0.1"
 lazy_static = "1.4"

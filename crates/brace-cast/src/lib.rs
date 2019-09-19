@@ -1,7 +1,10 @@
+extern crate self as brace_cast;
+
 use std::any::Any;
 use std::rc::Rc;
 use std::sync::Arc;
 
+pub use brace_cast_macros::cast;
 pub use inventory;
 
 pub mod macros;
@@ -157,7 +160,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use crate::{cast_mut, cast_ref, impl_cast_as, impl_cast_from, Cast};
+    use crate::{cast, cast_mut, cast_ref, impl_cast_as, impl_cast_from, Cast};
 
     trait Animal: Cast {
         fn name(&self) -> &str;
@@ -175,7 +178,8 @@ mod tests {
         fn ears(&self) -> &usize;
     }
 
-    trait Rodent: Mammal {
+    #[cast]
+    trait Rodent: Animal + Mammal {
         fn tail(&self) -> &bool;
     }
 
@@ -280,27 +284,26 @@ mod tests {
         }
     }
 
+    #[cast]
     impl Animal for Rat {
         fn name(&self) -> &str {
             &self.name
         }
     }
 
+    #[cast]
     impl Mammal for Rat {
         fn legs(&self) -> &usize {
             &self.legs
         }
     }
 
+    #[cast]
     impl Rodent for Rat {
         fn tail(&self) -> &bool {
             &self.tail
         }
     }
-
-    impl_cast_from!(struct Rat: Animal, Mammal, Rodent);
-    impl_cast_from!(trait Animal: Rodent);
-    impl_cast_from!(trait Mammal: Rodent);
 
     #[test]
     fn test_cast_struct_as_trait_object() {
