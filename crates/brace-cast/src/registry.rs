@@ -2,14 +2,12 @@ use std::any::{Any, TypeId};
 use std::collections::HashMap;
 
 use inventory::collect;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 use crate::Cast;
 
-lazy_static! {
-    static ref CAST_REF_REGISTRY: CastRefRegistry = CastRefRegistry::new();
-    static ref CAST_MUT_REGISTRY: CastMutRegistry = CastMutRegistry::new();
-}
+static CAST_REF_REGISTRY: Lazy<CastRefRegistry> = Lazy::new(CastRefRegistry::new);
+static CAST_MUT_REGISTRY: Lazy<CastMutRegistry> = Lazy::new(CastMutRegistry::new);
 
 collect!(CastRefRecord);
 collect!(CastMutRecord);
